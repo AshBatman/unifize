@@ -1,5 +1,5 @@
-import { ProcessEngine } from './engine';
-import { ProcessDefinition, User } from './types';
+import { ProcessEngine } from '../models/engine';
+import { ProcessDefinition, User } from '../models/types';
 
 // ============================================================
 // CAPA Process Definition (from assignment specification)
@@ -91,9 +91,8 @@ const capaDefinition: ProcessDefinition = {
     { fromStepKey: 'implementation', toStepKey: 'effectiveness_check', action: 'complete', priority: 0 },
     { fromStepKey: 'effectiveness_check', toStepKey: 'investigation', action: 'reopen',
       condition: { field: 'is_effective', op: 'eq', value: false }, priority: 1 },
+    // Self-loop: engine treats completed → same stepKey as terminal and completes the process.
     { fromStepKey: 'effectiveness_check', toStepKey: 'effectiveness_check', action: 'approve', priority: 0 },
-    // Note: effectiveness_check "approve" with no further step will complete the process
-    // We handle this by having the transition point to a non-existent step or checking in engine
   ],
 };
 
@@ -138,8 +137,9 @@ function runCAPAExample() {
       type: 'complete',
       fields: { findings: 'Viscosity out of spec' },
     }, users.bob);
-  } catch (e: any) {
-    console.log(`✗ Expected error: ${e.message}\n`);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log(`✗ Expected error: ${msg}\n`);
   }
 
   // 5. Investigation — now with root_cause_analysis

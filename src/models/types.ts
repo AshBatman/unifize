@@ -1,18 +1,17 @@
-// ============================================================
-// Domain Types for the Process Execution Engine
-// ============================================================
-
 export interface User {
   id: string;
   name: string;
   roles: string[];
 }
 
-// --- Process Definition Types (Blueprint) ---
-
 export type StepType = 'task' | 'approval' | 'parallel_approval' | 'review' | 'checklist' | 'signature';
 export type ActionType = 'complete' | 'approve' | 'reject' | 'escalate' | 'reopen';
 export type FieldType = 'text' | 'number' | 'enum' | 'boolean' | 'date';
+
+/** Runtime form values stored on instances and actions. */
+export type FieldValue = string | number | boolean | null;
+
+export type FieldBag = Record<string, FieldValue>;
 
 export interface FieldDefinition {
   name: string;
@@ -27,7 +26,7 @@ export interface FieldDefinition {
 }
 
 export interface CrossFieldRule {
-  if: { field: string; op: 'eq' | 'neq' | 'gt' | 'lt'; value: any };
+  if: { field: string; op: 'eq' | 'neq' | 'gt' | 'lt'; value: FieldValue };
   then: { field: string; required: boolean };
   errorMessage: string;
 }
@@ -36,14 +35,14 @@ export interface TransitionRule {
   fromStepKey: string;
   toStepKey: string;
   action: ActionType;
-  condition?: { field: string; op: 'eq' | 'neq' | 'gt' | 'lt'; value: any } | null;
+  condition?: { field: string; op: 'eq' | 'neq' | 'gt' | 'lt'; value: FieldValue } | null;
   priority: number;
 }
 
 export interface EscalationRule {
   timeoutHours: number;
   escalateTo: { type: 'role' | 'user'; value: string };
-  condition?: { field: string; op: 'eq' | 'neq'; value: any } | null;
+  condition?: { field: string; op: 'eq' | 'neq'; value: FieldValue } | null;
 }
 
 export interface StepDefinition {
@@ -55,8 +54,8 @@ export interface StepDefinition {
   fields: FieldDefinition[];
   crossFieldRules: CrossFieldRule[];
   escalation?: EscalationRule;
-  checklistItems?: string[];  // for checklist step type
-  requiredApprovers?: string[];  // user IDs for parallel_approval
+  checklistItems?: string[];
+  requiredApprovers?: string[];
 }
 
 export interface ProcessDefinition {
@@ -66,8 +65,6 @@ export interface ProcessDefinition {
   steps: StepDefinition[];
   transitions: TransitionRule[];
 }
-
-// --- Process Instance Types (Runtime) ---
 
 export type ProcessStatus = 'active' | 'completed' | 'cancelled' | 'suspended';
 export type StepStatus = 'pending' | 'in_progress' | 'completed' | 'rejected' | 'skipped' | 'escalated';
@@ -91,7 +88,7 @@ export interface StepInstance {
   stepKey: string;
   status: StepStatus;
   assignedTo?: string;
-  fields: Record<string, any>;
+  fields: FieldBag;
   approvals: StepApproval[];
   checklistItems: ChecklistItemState[];
   startedAt?: Date;
@@ -103,20 +100,18 @@ export interface ProcessInstance {
   definitionId: string;
   status: ProcessStatus;
   initiatedBy: string;
-  fields: Record<string, any>;
+  fields: FieldBag;
   currentStepKey: string;
   steps: Map<string, StepInstance>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// --- Action & Result Types ---
-
 export interface Action {
   type: ActionType;
-  fields?: Record<string, any>;
+  fields?: FieldBag;
   comments?: string;
-  checklistItemIndex?: number;  // for marking checklist items
+  checklistItemIndex?: number;
 }
 
 export interface StepResult {
@@ -127,10 +122,13 @@ export interface StepResult {
   newStatus: StepStatus;
   nextStepKey?: string;
   error?: string;
-  waitingOn?: string[];  // for parallel approvals: who hasn't decided yet
+  waitingOn?: string[];
 }
 
-// --- Audit Types ---
+/** Snapshot on start, or per-field before/after on updates. */
+export type AuditFieldChanges =
+  | FieldBag
+  | Record<string, { before: FieldValue; after: FieldValue }>;
 
 export interface AuditEntry {
   id: number;
@@ -140,8 +138,8 @@ export interface AuditEntry {
   action: string;
   previousState: string | null;
   newState: string | null;
-  fieldChanges: Record<string, { before: any; after: any }> | null;
-  metadata: Record<string, any> | null;
+  fieldChanges: AuditFieldChanges | null;
+  metadata: Record<string, unknown> | null;
   reason: string | null;
   timestamp: Date;
   checksum: string;

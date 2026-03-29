@@ -1,0 +1,13 @@
+{
+  "name": "process-engine",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "tsx src/controllers/example.ts",
+    "example": "tsx src/controllers/example.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0"
+  }
+}
